@@ -1,0 +1,709 @@
+/* ============================================================
+   JOGJAGAMERS — Services landing
+   Layout/measurements modeled on apple.com/id/services structure
+   (nav height, flyout timing/easing, blur values) — brand-neutral.
+   ============================================================ */
+
+:root{
+  --nav-height: 44px;
+  --nav-font-size: 17px;
+  --ease-standard: cubic-bezier(.4, 0, .6, 1);
+  --ease-out: cubic-bezier(.25, .1, .3, 1);
+
+  --color-bg: #ffffff;
+  --color-text: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-accent: #0a6cff;
+  --color-accent-2: #7c3aed;
+  --color-surface: #f5f5f7;
+  --color-border: rgba(0,0,0,.08);
+
+  --nav-bg-light: rgba(250, 250, 252, .8);
+  --nav-bg-dark: rgba(22, 22, 23, .8);
+}
+
+*, *::before, *::after{ box-sizing: border-box; }
+
+html{ scroll-behavior: smooth; scrollbar-gutter: stable; }
+
+body{
+  margin: 0;
+  padding-top: var(--nav-height);
+  font-family: "Google Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a{ color: inherit; text-decoration: none; }
+ul{ list-style: none; margin: 0; padding: 0; }
+img{ max-width: 100%; display: block; }
+
+.chev-right{
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  margin-left: 4px;
+}
+
+/* ============================================================
+   NAVBAR — sticky, blurred, hover-expand flyout mega menu
+   ============================================================ */
+
+.navbar{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 9999;
+  height: var(--nav-height);
+  font-size: var(--nav-font-size);
+  background: var(--nav-bg-light);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  transition: background .5s var(--ease-standard), height .4s var(--ease-standard);
+  user-select: none;
+}
+
+.navbar.navbar-dark{
+  background: var(--nav-bg-dark);
+  color: #f5f5f7;
+}
+
+/* backdrop-filter on #navbar makes it a containing block AND a
+   compositing layer for its fixed descendants — that's broken the
+   mobile menu's sizing/repainting more than once, so drop it while
+   the mobile menu itself is open (its own panel is already opaque). */
+.navbar.mobile-open{
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.navbar-curtain{
+  position: fixed;
+  inset: var(--nav-height) 0 0 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s var(--ease-standard);
+  z-index: 9998;
+}
+.navbar.flyout-open ~ .navbar-curtain{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.navbar-content{
+  max-width: 1024px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.navbar-list{
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+.navbar-item{ position: relative; height: 100%; display: flex; align-items: center; }
+.navbar-item-logo{ margin-right: 8px; }
+
+.navbar-link{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .01em;
+  color: rgba(0,0,0,.8);
+  opacity: .8;
+  transition: opacity .24s var(--ease-standard);
+  white-space: nowrap;
+}
+.navbar-dark .navbar-link{ color: #f5f5f7; }
+
+.navbar-link:hover, .navbar-item.flyout-active .navbar-link{
+  opacity: 1;
+}
+
+.navbar-link-logo{
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  opacity: 1;
+  padding: 0 8px 0 0;
+}
+
+.navbar-logo-img{
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+.navbar-icon{
+  width: 15px; height: 15px;
+  fill: currentColor;
+  opacity: .8;
+}
+
+.navbar-chevron{
+  width: 8px; height: 8px;
+  border-right: 1.3px solid currentColor;
+  border-bottom: 1.3px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .24s var(--ease-standard);
+  margin-top: -2px;
+}
+.navbar-item.flyout-active .navbar-chevron{
+  transform: rotate(225deg);
+  margin-top: 2px;
+}
+
+/* --- the "mengembang" flyout panel --- */
+
+.navbar-flyout{
+  position: fixed;
+  top: var(--nav-height);
+  left: 0; right: 0;
+  overflow: hidden;
+  max-height: 0;
+  background: #f5f5f7;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  transition: max-height .45s var(--ease-standard);
+  pointer-events: none;
+  box-shadow: 0 24px 48px -12px rgba(0,0,0,.35);
+}
+.navbar-dark .navbar-flyout{ background: #161617; }
+
+.navbar-item.flyout-active .navbar-flyout{
+  max-height: 420px;
+  pointer-events: auto;
+}
+
+/* inner content fades/slides in shortly after the panel opens, and
+   drops out immediately (no delay) when it closes — so the dominant
+   motion on close is the panel itself retracting upward. */
+.navbar-flyout-inner{
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity .22s var(--ease-standard), transform .22s var(--ease-standard);
+}
+.navbar-item.flyout-active .navbar-flyout-inner{
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: .1s;
+}
+
+.navbar-flyout-inner{
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+}
+
+.flyout-col-links{ display: flex; flex-direction: column; gap: 18px; padding-top: 4px; }
+.flyout-eyebrow{
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.flyout-link{
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  transition: opacity .2s var(--ease-standard);
+}
+.navbar-dark .flyout-link{ color: #f5f5f7; }
+.flyout-link:hover{ opacity: .6; }
+
+/* hamburger (mobile) — lives outside .navbar-list so flipping the
+   list to a vertical column (mobile-open) never sweeps it in as
+   a list row; it stays pinned at the top-right at all times. */
+.navbar-hamburger{
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 16px;
+  height: var(--nav-height);
+  width: 32px;
+  background: none; border: none;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 5px; cursor: pointer;
+  z-index: 1;
+}
+.navbar-hamburger span{
+  width: 18px; height: 1.5px;
+  background: currentColor;
+  transition: transform .2s var(--ease-standard), opacity .2s var(--ease-standard);
+}
+.navbar-hamburger.open span:first-child{ transform: translateY(3.25px) rotate(45deg); }
+.navbar-hamburger.open span:last-child{ transform: translateY(-3.25px) rotate(-45deg); }
+
+/* ============================================================
+   SECTIONS — shared
+   ============================================================ */
+
+.section{ padding: 100px 22px; }
+.section[data-theme="dark"]{ background: #000; color: #f5f5f7; }
+.section[data-theme="light"]{ background: var(--color-bg); color: var(--color-text); }
+
+.btn{
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  border-radius: 980px;
+  font-size: 17px;
+  font-weight: 400;
+  transition: background .2s var(--ease-standard), opacity .2s var(--ease-standard);
+}
+.btn-primary{ background: var(--color-accent); color: #fff; }
+.btn-primary:hover{ background: #0958cc; }
+.btn-link{ color: var(--color-accent); padding-left: 4px; }
+.btn-link:hover{ opacity: .7; }
+
+.btn-neutral{ background: #f5f5f7; color: #000; border: 1px solid #fff; }
+.btn-neutral:hover{ background: #fff; }
+.btn-outline{ background: transparent; color: #fff; border: 1px solid #fff; }
+.btn-outline:hover{ background: rgba(255,255,255,.1); }
+
+/* ============================================================
+   CHAPTERNAV — icon row sticky under the navbar
+   ============================================================ */
+
+.chapternav{
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 2.2vw, 32px);
+  padding: 40px 16px 32px;
+  overflow-x: auto;
+}
+
+.chapternav-link{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text);
+  opacity: .75;
+  white-space: nowrap;
+  transition: opacity .2s var(--ease-standard);
+}
+.chapternav-link:hover{ opacity: 1; }
+.chapternav-icon{ width: 52px; height: 52px; object-fit: contain; }
+
+.chapternav-item{ position: relative; display: flex; }
+.chapternav-trigger{
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chapternav-dropdown{
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 130px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity .18s var(--ease-standard), transform .18s var(--ease-standard);
+  z-index: 950;
+}
+.chapternav-dropdown.is-open{
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 6px);
+}
+
+.chapternav-dropdown-link{
+  padding: 8px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  text-align: center;
+}
+.chapternav-dropdown-link:hover{ background: var(--color-surface); }
+
+/* ============================================================
+   HERO — full black section, centered headline, no CTAs
+   ============================================================ */
+
+.hero{ padding: 72px 22px 88px; text-align: center; }
+.hero-inner{ max-width: 900px; margin: 0 auto; }
+
+.hero-title{
+  font-size: clamp(38px, 7vw, 96px);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0 0 28px;
+  -webkit-text-stroke: 1px currentColor;
+  text-stroke: 1px currentColor;
+}
+
+.hero-sub{
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   ADVERTISEMENT — dark strip between hero and news
+   ============================================================ */
+
+.ad-bar{ background: #1d1d1f; padding: 44px 22px; }
+.ad-bar-inner{
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.ad-logo-img{ height: 48px; width: auto; display: block; }
+.ad-text{ font-size: 18px; line-height: 1.4; color: #d2d2d7; flex: 1; min-width: 260px; margin: 0; }
+
+/* ============================================================
+   NEWS — full-bleed image hero + news cards
+   ============================================================ */
+
+.news{ padding: 0; }
+
+.news-hero{
+  position: relative;
+  min-height: clamp(480px, 78vh, 780px);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.news-hero-bg{
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.8) 100%), url('assets/images/hm1lujd919iyoel5icfj.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.news-hero-content{
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px 56px;
+  color: #fff;
+}
+
+.news-badges{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.badge-logo{ font-size: 20px; font-weight: 400; display: flex; align-items: center; gap: 8px; }
+.badge-pill{
+  font-size: 15px;
+  font-weight: 400;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 16px;
+  padding: 5px 16px;
+}
+
+.news-headline-row{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.news-title{
+  font-size: clamp(26px, 3.6vw, 40px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin: 0;
+  max-width: 540px;
+}
+
+.news-ctas{ display: flex; gap: 12px; flex-shrink: 0; }
+
+.news-wrap{
+  background: #fff;
+  overflow: hidden;
+  padding: 28px 0;
+}
+
+.news-track{
+  display: flex;
+  gap: 15px;
+  width: max-content;
+  padding: 0 22px;
+  cursor: grab;
+  /* animation diatur via javascript agar bisa di-drag */
+}
+.news-track:active {
+  cursor: grabbing;
+}
+
+.news-card{ flex: 0 0 auto; width: 420px; cursor: pointer; }
+
+.news-card-media{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,.3);
+  font-size: 28px;
+}
+
+.news-card-badge{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #fff;
+  opacity: .85;
+}
+
+.news-card-play{
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  color: #000;
+  border-radius: 980px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.news-card-info{ padding: 14px 2px 0; }
+.news-card-title{ font-size: 18px; font-weight: 700; color: #1d1d1f; margin: 0 0 3px; }
+.news-card-tag{ font-size: 13px; color: #6e6e73; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.footer{ background: var(--color-surface); padding: 40px 22px 24px; font-size: 12px; color: var(--color-text-secondary); }
+.footer-top{ max-width: 1100px; margin: 0 auto 24px; border-bottom: 1px solid var(--color-border); padding-bottom: 24px; }
+
+.footer-directory{
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.footer-col{ display: flex; flex-direction: column; gap: 10px; }
+.footer-col-title{ font-size: 12px; font-weight: 700; color: var(--color-text); margin: 0 0 4px; }
+.footer-col a:hover{ text-decoration: underline; }
+
+.footer-legal{
+  max-width: 1100px;
+  margin: 16px auto 0;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footer-legal-links{ display: flex; gap: 16px; }
+.footer-legal-links a:hover{ text-decoration: underline; }
+
+/* ============================================================
+   MODAL — bottom sheet with blurred backdrop
+   ============================================================ */
+
+body.modal-open{ overflow: hidden; }
+
+.modal-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .35s var(--ease-standard), visibility 0s linear .35s;
+}
+.modal-overlay.is-open{
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .35s var(--ease-standard);
+}
+
+.modal-sheet{
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 55vh;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -24px 60px rgba(0,0,0,.35);
+  transform: translateY(100%);
+  transition: transform .45s var(--ease-standard);
+}
+.modal-overlay.is-open .modal-sheet{
+  transform: translateY(0);
+}
+
+.modal-handle{
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+.modal-close{
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover{ background: #e8e8ed; }
+
+.modal-body{
+  padding: 40px 32px 48px;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 833px){
+  .navbar-item:not(.navbar-item-logo){
+    display: none;
+  }
+  .navbar-hamburger{ display: flex; }
+
+  .navbar.mobile-open .navbar-list{
+    display: block;
+    height: calc(100vh - var(--nav-height));
+    position: fixed;
+    top: var(--nav-height);
+    left: 0; right: 0;
+    overflow-y: auto;
+    background: #f5f5f7;
+    padding: 12px 24px 24px;
+  }
+  .navbar.mobile-open.navbar-dark .navbar-list{ background: #161617; }
+  .navbar.mobile-open .navbar-item{
+    display: block !important;
+    height: auto;
+    padding: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .navbar.mobile-open .navbar-item > .navbar-link{
+    display: flex;
+    align-items: center;
+    padding: 14px 0;
+  }
+  .navbar.mobile-open .navbar-item-logo{ display: none !important; }
+
+  .navbar.mobile-open .navbar-item.has-flyout > .navbar-link{
+    width: 100%;
+    justify-content: space-between;
+  }
+  .navbar.mobile-open .navbar-flyout{
+    display: block;
+    position: static;
+    max-height: 0;
+    overflow: hidden;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    transition: max-height .35s var(--ease-standard);
+  }
+  .navbar.mobile-open .navbar-item.flyout-active .navbar-flyout{ max-height: 480px; }
+  .navbar.mobile-open .navbar-flyout-inner{ max-width: none; margin: 0; padding: 0 0 12px; }
+  .navbar.mobile-open .flyout-link{ font-size: 17px; }
+
+  .footer-directory{ grid-template-columns: repeat(2, 1fr); gap: 32px 16px; }
+  .footer-legal{ flex-direction: column; gap: 12px; align-items: flex-start; }
+  .footer-legal p { margin: 0; }
+  .footer-legal-links { flex-wrap: wrap; }
+  
+  .news-card { width: 340px; }
+}
+
+@media (max-width: 480px){
+  .footer-directory{ grid-template-columns: 1fr; gap: 28px; }
+  
+  .news-hero-content {
+    padding: 32px 16px 40px;
+  }
+  .news-headline-row {
+    gap: 24px;
+  }
+  .news-ctas {
+    flex-direction: column;
+    width: 100%;
+  }
+  .news-ctas .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .news-card { width: 280px; }
+}
